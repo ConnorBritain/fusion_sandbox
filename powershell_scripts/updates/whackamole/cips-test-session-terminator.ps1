@@ -35,49 +35,69 @@ try {
     $sessions = query session
 
     $terminatedSessions = @()
+    $skippedSessions = @()
 
     foreach ($session in $sessions) {
         $sessionInfo = $session -split '\s+'
         $username = $sessionInfo[1]
         $sessionId = $sessionInfo[2]
+        $sessionState = $sessionInfo[3]
 
-        if ($username -ne "USERNAME" -and $sessionId -ne $currentSessionId) {  # Skip header and current user
-            $terminateSession = $false
-            $environment = ""
+        # Skip termination for:
+        # 1. The header row
+        # 2. The current user's session
+        # 3. The "services" account (typically with empty username and ID 0)
+        # 4. Any session with ID 0
+        if ($username -eq "USERNAME" -or 
+            $sessionId -eq $currentSessionId -or 
+            ($username -eq "" -and $sessionId -eq "0") -or 
+            $sessionId -eq "0" -or
+            $username -eq "services") {
+            $skippedSessions += "User: $username, SessionID: $sessionId, State: $sessionState - Skipped (Protected Session)"
+            continue
+        }
 
-            foreach ($process in $processesToCheck) {
-                foreach ($testFolder in $testFolders) {
-                    $runningProcesses = Get-WmiObject Win32_Process -Filter "Name = '$process.exe'" | 
-                        Where-Object { $_.CommandLine -like "*Program Files (x86)\$testFolder\*" }
+        $terminateSession = $false
+        $environment = ""
 
-                    foreach ($proc in $runningProcesses) {
-                        if ($proc.GetOwner().User -eq $username) {
-                            $terminateSession = $true
-                            $environment = $testFolder
-                            break 3  # Exit all loops if a match is found
-                        }
+        foreach ($process in $processesToCheck) {
+            foreach ($testFolder in $testFolders) {
+                $runningProcesses = Get-WmiObject Win32_Process -Filter "Name = '$process.exe'" | 
+                    Where-Object { $_.CommandLine -like "*Program Files (x86)\$testFolder\*" }
+
+                foreach ($proc in $runningProcesses) {
+                    if ($proc.GetOwner().User -eq $username) {
+                        $terminateSession = $true
+                        $environment = $testFolder
+                        break 3  # Exit all loops if a match is found
                     }
                 }
             }
+        }
 
-            if ($terminateSession) {
-                try {
-                    # Attempt to log off the user session
-                    logoff $sessionId
-                    $terminatedSessions += "User: $username, SessionID: $sessionId, Environment: $environment - Terminated successfully"
-                    Write-Log "Terminated session for User: $username, SessionID: $sessionId, Environment: $environment"
-                }
-                catch {
-                    $errorMessage = $_.Exception.Message
-                    $terminatedSessions += "User: $username, SessionID: $sessionId, Environment: $environment - Termination failed: $errorMessage"
-                    Write-Log "Failed to terminate session for User: $username, SessionID: $sessionId, Environment: $environment. Error: $errorMessage"
-                }
+        if ($terminateSession) {
+            try {
+                # Attempt to log off the user session
+                logoff $sessionId
+                $terminatedSessions += "User: $username, SessionID: $sessionId, Environment: $environment - Terminated successfully"
+                Write-Log "Terminated session for User: $username, SessionID: $sessionId, Environment: $environment"
             }
+            catch {
+                $errorMessage = $_.Exception.Message
+                $terminatedSessions += "User: $username, SessionID: $sessionId, Environment: $environment - Termination failed: $errorMessage"
+                Write-Log "Failed to terminate session for User: $username, SessionID: $sessionId, Environment: $environment. Error: $errorMessage"
+            }
+        }
+        else {
+            $skippedSessions += "User: $username, SessionID: $sessionId, State: $sessionState - Skipped (No CIPS processes found)"
         }
     }
 
-    # Output terminated sessions to file
-    $terminatedSessions | Out-File -FilePath $outputFile
+    # Output terminated and skipped sessions to file
+    "Terminated Sessions:" | Out-File -FilePath $outputFile
+    $terminatedSessions | Out-File -FilePath $outputFile -Append
+    "`nSkipped Sessions:" | Out-File -FilePath $outputFile -Append
+    $skippedSessions | Out-File -FilePath $outputFile -Append
 
     Write-Log "CIPS TEST/UAT session termination completed. Results saved to $outputFile"
     Write-Output "Session termination complete. Results saved to $outputFile"

@@ -1,8 +1,8 @@
-# CIPS PROD Session Terminator Script
+# CIPS PROD Session Identifier Script
 
 # Define the output file path
 $outputFolder = "$env:USERPROFILE\Documents\CIPS_UpdateLogs"
-$outputFile = Join-Path $outputFolder ("CIPS-PROD_TerminatedSessions_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".txt")
+$outputFile = Join-Path $outputFolder ("CIPS-PROD_ActiveSessions_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".txt")
 
 # Ensure the output folder exists
 if (-not (Test-Path $outputFolder)) {
@@ -26,13 +26,13 @@ $processesToCheck = @("Cips", "CipsRemote", "CipsServices")
 $currentSessionId = (Get-Process -PID $PID).SessionId
 
 try {
-    Write-Log "Starting CIPS PROD session termination process"
+    Write-Log "Starting CIPS PROD session identification"
 
     # Get all user sessions
     $sessions = query session
 
-    $terminatedSessions = @()
-    $skippedSessions = @()
+    $activeSessions = @()
+    $protectedSessions = @()
 
     foreach ($session in $sessions) {
         $sessionInfo = $session -split '\s+'
@@ -40,21 +40,17 @@ try {
         $sessionId = $sessionInfo[2]
         $sessionState = $sessionInfo[3]
 
-        # Skip termination for:
-        # 1. The header row
-        # 2. The current user's session
-        # 3. The "services" account (typically with empty username and ID 0)
-        # 4. Any session with ID 0
+        # Identify protected sessions
         if ($username -eq "USERNAME" -or 
             $sessionId -eq $currentSessionId -or 
             ($username -eq "" -and $sessionId -eq "0") -or 
             $sessionId -eq "0" -or
             $username -eq "services") {
-            $skippedSessions += "User: $username, SessionID: $sessionId, State: $sessionState - Skipped (Protected Session)"
+            $protectedSessions += "User: $username, SessionID: $sessionId, State: $sessionState - Protected Session"
             continue
         }
 
-        $terminateSession = $false
+        $activeProcessFound = $false
 
         foreach ($process in $processesToCheck) {
             $runningProcesses = Get-WmiObject Win32_Process -Filter "Name = '$process.exe'" | 
@@ -62,38 +58,26 @@ try {
 
             foreach ($proc in $runningProcesses) {
                 if ($proc.GetOwner().User -eq $username) {
-                    $terminateSession = $true
+                    $activeSessions += "User: $username, SessionID: $sessionId, Process: $($proc.Name)"
+                    $activeProcessFound = $true
                     break 2  # Exit both loops if a match is found
                 }
             }
         }
 
-        if ($terminateSession) {
-            try {
-                # Attempt to log off the user session
-                logoff $sessionId
-                $terminatedSessions += "User: $username, SessionID: $sessionId - Terminated successfully"
-                Write-Log "Terminated session for User: $username, SessionID: $sessionId"
-            }
-            catch {
-                $errorMessage = $_.Exception.Message
-                $terminatedSessions += "User: $username, SessionID: $sessionId - Termination failed: $errorMessage"
-                Write-Log "Failed to terminate session for User: $username, SessionID: $sessionId. Error: $errorMessage"
-            }
-        }
-        else {
-            $skippedSessions += "User: $username, SessionID: $sessionId, State: $sessionState - Skipped (No CIPS processes found)"
+        if (-not $activeProcessFound) {
+            $protectedSessions += "User: $username, SessionID: $sessionId, State: $sessionState - No CIPS processes found"
         }
     }
 
-    # Output terminated and skipped sessions to file
-    "Terminated Sessions:" | Out-File -FilePath $outputFile
-    $terminatedSessions | Out-File -FilePath $outputFile -Append
-    "`nSkipped Sessions:" | Out-File -FilePath $outputFile -Append
-    $skippedSessions | Out-File -FilePath $outputFile -Append
+    # Output active and protected sessions to file
+    "Active CIPS Sessions:" | Out-File -FilePath $outputFile
+    $activeSessions | Out-File -FilePath $outputFile -Append
+    "`nProtected or Inactive Sessions:" | Out-File -FilePath $outputFile -Append
+    $protectedSessions | Out-File -FilePath $outputFile -Append
 
-    Write-Log "CIPS PROD session termination completed. Results saved to $outputFile"
-    Write-Output "Session termination complete. Results saved to $outputFile"
+    Write-Log "CIPS PROD session identification completed. Results saved to $outputFile"
+    Write-Output "Session identification complete. Results saved to $outputFile"
 }
 catch {
     $errorMessage = $_.Exception.Message

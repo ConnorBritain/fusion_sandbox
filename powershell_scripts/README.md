@@ -21,7 +21,10 @@ Output files are crafted with detailed naming conventions for easy identificatio
 
 We encourage those who are able and willing to contribute to scripts and tools like this to support the repository by making whatever improvements they see useful. Here’s how you can contribute:
 
-Fork the repository: Start with your own fork to experiment and make changes.
-Commit Changes: Make your modifications or enhancements in your forked version.
-Submit a Pull Request: Provide a clear description of your improvements for review.
+**Fork the repository:** Start with your own fork to experiment and make changes.
+
+**Commit Changes:** Make your modifications or enhancements in your forked version.
+
+**Submit a Pull Request:** Provide a clear description of your improvements for review.
+
 Your expertise can significantly boost our collective efficiency and the quality of services we offer. By enhancing these scripts, you help not only yourself but also your fellow Fusionites.

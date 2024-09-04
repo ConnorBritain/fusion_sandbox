@@ -1,6 +1,6 @@
 # Define variables
-$networkShare = "\\IHSSQL1\Updates"
-$installerName = "2024-08-01-CIPS-Prod-Client-9.0.243.007.exe"
+$networkShare = "\\[NETWORK_SHARE]\Updates"
+$installerName = "1999-12-31-CIPS-Prod-Client-9.0.ABC.XYZ.exe"
 $installerPath = Join-Path $networkShare $installerName
 $localTempPath = "C:\Temp"
 $localInstallerPath = Join-Path $localTempPath "CIPS_Installer"

@@ -1,6 +1,6 @@
-# Fusion Sandbox :computer: :sparkles:
+# Fusion Toolbox :computer: :sparkles:
 
-Welcome to the Fusion Sandbox! This repository serves as a central hub for SQL enthusiasts, healthcare professionals, and technical engineers. It offers a curated collection of SQL queries, PowerShell scripts, and database tools designed to enhance data management, streamline workflows, and improve system performance.
+Welcome to the Fusion Toolbox! This repository serves as a central hub for SQL enthusiasts, healthcare professionals, and technical engineers. It offers a curated collection of SQL queries, PowerShell scripts, and database tools designed to enhance data management, streamline workflows, and improve system performance.
 
 ## What's Inside? :open_file_folder:
 

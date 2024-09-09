@@ -43,4 +43,5 @@ BEGIN
     DROP TABLE #InitialCounts;
 END
 
--- EXEC TrackHL7Impact @WaitTimeSeconds = 60; -- Adjust wait time as needed
+-- EXEC TrackHL7Impact @WaitTimeSeconds = 60; 
+-- Adjust wait time as needed
